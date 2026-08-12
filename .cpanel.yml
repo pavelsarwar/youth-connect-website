@@ -5,4 +5,5 @@ deployment:
     - /bin/cp -R assets $DEPLOYPATH
     - /bin/cp index.html $DEPLOYPATH
     - /bin/cp team.html $DEPLOYPATH
+    - /bin/cp donation.html $DEPLOYPATH
     - /bin/cp privacy-policy.html $DEPLOYPATH
