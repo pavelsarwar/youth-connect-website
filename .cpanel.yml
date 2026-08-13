@@ -12,4 +12,5 @@ deployment:
     - /bin/cp privacy-policy.html $DEPLOYPATH
     - /bin/cp events.html $DEPLOYPATH
     - /bin/cp events-config.js $DEPLOYPATH
+    - /bin/cp events-page.js $DEPLOYPATH
     - /bin/cp events.js $DEPLOYPATH
