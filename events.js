@@ -1,6 +1,6 @@
 (() => {
   const config = window.YCF_EVENTS_CONFIG || {};
-  const grid = document.getElementById('dynamicEvents');
+  const grid = document.getElementById('dynamicEvents') || document.querySelector('#event .event-grid');
   if (!grid || !config.sheetUrl) return;
 
   const escapeHtml = (value = '') => String(value)
@@ -70,7 +70,7 @@
       const link = event.registration_link || event.registration_url || event.link || '';
       const title = escapeHtml(event.title || event.event_title || 'Youth Connect Event');
       const description = escapeHtml(event.description || event.details || '');
-      return `<div class="event-card"><div class="date-icon">📅</div><h3>${title}</h3>${meta ? `<div class="event-meta">${meta}</div>` : ''}${description ? `<p>${description}</p>` : ''}${link ? `<a class="event-link" href="${escapeHtml(link)}" target="_blank" rel="noopener">Register / Learn More →</a>` : ''}</div>`;
+      return `<div class="event-card"><div class="date-icon">📅</div><h3>${title}</h3>${meta ? `<div style="margin:-2px 0 10px;color:#0654d9;font-size:12px;font-weight:800;line-height:1.5">${meta}</div>` : ''}${description ? `<p>${description}</p>` : ''}${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:13px;color:#0654d9;font-weight:900;font-size:13px">Register / Learn More →</a>` : ''}</div>`;
     }).join('');
   };
 
