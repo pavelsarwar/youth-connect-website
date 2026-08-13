@@ -1,0 +1,41 @@
+name: Normalize Event navigation links
+
+on:
+  push:
+    branches:
+      - agent/events-page-update
+
+permissions:
+  contents: write
+
+jobs:
+  normalize-links:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/events-page-update
+          fetch-depth: 0
+      - name: Update Event navigation links
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          for path in Path('.').glob('*.html'):
+              text = path.read_text(encoding='utf-8')
+              updated = text.replace('href="index.html#event"', 'href="events.html"')
+              if path.name == 'index.html':
+                  updated = updated.replace('href="#event"', 'href="events.html"')
+              if updated != text:
+                  path.write_text(updated, encoding='utf-8')
+          PY
+      - name: Remove one-time workflow
+        run: rm -f .github/workflows/normalize-event-links.yml
+      - name: Commit normalized links
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add '*.html' .github/workflows/normalize-event-links.yml
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Update Event links across public pages"
+          git push origin HEAD:agent/events-page-update
