@@ -6,4 +6,6 @@ deployment:
     - /bin/cp index.html $DEPLOYPATH
     - /bin/cp team.html $DEPLOYPATH
     - /bin/cp donation.html $DEPLOYPATH
+    - /bin/cp volunteer.html $DEPLOYPATH
+    - /bin/cp partner.html $DEPLOYPATH
     - /bin/cp privacy-policy.html $DEPLOYPATH
