@@ -10,5 +10,6 @@ deployment:
     - /bin/cp volunteer.html $DEPLOYPATH
     - /bin/cp partner.html $DEPLOYPATH
     - /bin/cp privacy-policy.html $DEPLOYPATH
+    - /bin/cp events.html $DEPLOYPATH
     - /bin/cp events-config.js $DEPLOYPATH
     - /bin/cp events.js $DEPLOYPATH
