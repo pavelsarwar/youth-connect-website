@@ -14,4 +14,4 @@ deployment:
     - /bin/cp events-config.js $DEPLOYPATH
     - /bin/cp events-page.js $DEPLOYPATH
     - /bin/cp events.js $DEPLOYPATH
-    - /usr/bin/perl -0pi -e 's#<div class="footer-right">.*?</div>#<div class="footer-right"><a href="privacy-policy.html">Privacy Policy</a></div>#gs' $DEPLOYPATH/*.html
+    - /bin/cp .htaccess $DEPLOYPATH
