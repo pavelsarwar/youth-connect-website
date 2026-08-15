@@ -1,0 +1,63 @@
+name: Footer Source Fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/footer-source-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-footer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Keep only Privacy Policy in public page footers
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          files = [
+              'index.html',
+              'team.html',
+              'events.html',
+              'donation.html',
+              'get-involved.html',
+              'partner.html',
+              'volunteer.html',
+              'privacy-policy.html',
+          ]
+          old = '<div class="footer-right"><a href="get-involved.html">Get Involved</a> &nbsp;•&nbsp; <a href="donation.html">Donate</a> &nbsp;•&nbsp; <a href="privacy-policy.html">Privacy Policy</a></div>'
+          new = '<div class="footer-right"><a href="privacy-policy.html">Privacy Policy</a></div>'
+
+          changed = []
+          for name in files:
+              path = Path(name)
+              text = path.read_text(encoding='utf-8')
+              updated = text.replace(old, new)
+              if updated != text:
+                  path.write_text(updated, encoding='utf-8')
+                  changed.append(name)
+          print('Changed:', ', '.join(changed) if changed else 'none')
+          PY
+
+      - name: Commit source footer cleanup
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No source changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html team.html events.html donation.html get-involved.html partner.html volunteer.html privacy-policy.html
+          git commit -m "Clean footer links across public pages"
+          git push
