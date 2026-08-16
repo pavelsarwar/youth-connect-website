@@ -26,21 +26,15 @@ jobs:
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
           css='''.network-section{padding:12px 0 72px;background:#fff}.network-head{text-align:center;max-width:760px;margin:0 auto 28px}.network-head h2{font-size:clamp(30px,3vw,42px);letter-spacing:-.04em;margin-bottom:10px}.network-head p{color:var(--muted);line-height:1.7}.network-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.network-card{position:relative;padding:24px;border-radius:22px;background:#fff;border:1px solid rgba(10,26,52,.08);box-shadow:0 14px 38px rgba(13,33,62,.07);display:flex;flex-direction:column;min-height:255px}.network-card.primary{border-color:rgba(18,104,255,.24);box-shadow:0 16px 42px rgba(18,104,255,.10)}.network-country{display:flex;align-items:center;gap:9px;color:#0654d9;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}.network-flag{font-size:25px;line-height:1}.network-card h3{font-size:20px;margin-bottom:10px}.network-card p{font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:14px}.network-reg{font-size:12px;font-weight:800;color:#233b59;margin-top:auto}.network-link{display:inline-flex;align-items:center;gap:7px;margin-top:13px;color:#0654d9;font-size:12px;font-weight:900}.network-link:hover{color:#0b7adf}@media(max-width:900px){.network-grid{grid-template-columns:1fr}.network-card{min-height:0}}'''
-          if '.network-section{' not in s:
-              s=s.replace('</style>',css+'</style>',1)
+          if '.network-section{' not in s:s=s.replace('</style>',css+'</style>',1)
           section='''<section class="network-section" id="network"><div class="container"><div class="network-head"><div class="section-label">Our Network</div><h2>Connected for greater youth impact</h2><p>Our youth-led organizations in Bangladesh and Malaysia work across education, innovation and community development while operating under their respective legal registrations and governance.</p></div><div class="network-grid"><article class="network-card primary"><div class="network-country"><span class="network-flag">🇧🇩</span>Bangladesh</div><h3>Youth Connect Foundation</h3><p>A registered nonprofit organization under the Societies Registration Act XXI of 1860, RJSC, Government of Bangladesh.</p><div class="network-reg">Registration: S-14789/2026</div><a class="network-link" href="https://youthconnect.org.bd/" target="_blank" rel="noopener">youthconnect.org.bd <i class="fa-solid fa-arrow-up-right-from-square"></i></a></article><article class="network-card"><div class="network-country"><span class="network-flag">🇧🇩</span>Bangladesh</div><h3>Youth Hub</h3><p>A registered youth organization under the Department of Youth Development, Government of the People’s Republic of Bangladesh.</p><div class="network-reg">Registration: DYD/124</div><a class="network-link" href="https://www.youthhub.org.bd/" target="_blank" rel="noopener">youthhub.org.bd <i class="fa-solid fa-arrow-up-right-from-square"></i></a></article><article class="network-card"><div class="network-country"><span class="network-flag">🇲🇾</span>Malaysia</div><h3>Youth Hub Foundation Berhad</h3><p>A nonprofit organization registered as a Company Limited by Guarantee (CLBG), Malaysia.</p><div class="network-reg">Registration: 1663149-U</div><a class="network-link" href="https://www.youthhub.org.my/" target="_blank" rel="noopener">youthhub.org.my <i class="fa-solid fa-arrow-up-right-from-square"></i></a></article></div></div></section>'''
           if 'id="network"' not in s:
-              # Place immediately after the About section, before the next section.
               m=re.search(r'(<section[^>]*class="[^"]*about-section[^"]*"[^>]*>.*?</section>)',s,re.S)
-              if m:
-                  s=s[:m.end()]+section+s[m.end():]
+              if m:s=s[:m.end()]+section+s[m.end():]
               else:
-                  # Safe fallback: insert before Programs section anchor.
                   marker='<section class="section gray" id="program">'
-                  if marker in s:
-                      s=s.replace(marker,section+marker,1)
-                  else:
-                      raise SystemExit('Could not locate About/Programs insertion point')
+                  if marker in s:s=s.replace(marker,section+marker,1)
+                  else:raise SystemExit('Could not locate About/Programs insertion point')
           p.write_text(s,encoding='utf-8')
           PY
       - name: Commit homepage network section
