@@ -74,7 +74,12 @@ jobs:
           .more-drawer a{display:flex!important;align-items:center;gap:10px;min-height:42px!important;padding:10px 12px!important;border-radius:11px!important;color:#fff!important;font-size:12px!important;font-weight:800!important;background:rgba(255,255,255,.05)!important;border:1px solid transparent!important}
           .more-drawer a:hover{background:rgba(18,104,255,.18)!important;border-color:rgba(16,200,255,.25)!important;transform:none!important}
           .more-drawer a i{width:18px;text-align:center;color:#ffc83d!important}
-          @media(max-width:1140px){.more-wrap{display:block;width:100%}.more-toggle{width:48px;height:48px;margin-left:auto}.more-drawer{position:static;min-width:0;margin-top:6px;box-shadow:none;background:rgba(255,255,255,.035)}.more-drawer a{min-height:44px!important}}
+          .mobile-extra{display:none!important}
+          @media(max-width:1140px){
+            .more-wrap{display:none!important}
+            .mobile-extra{display:flex!important}
+            .mobile-extra.first{margin-top:5px;border-top:1px solid rgba(255,255,255,.12)!important;padding-top:10px!important}
+          }
           '''
 
           def nav_link(href, icon, label, key, active, extra=''):
@@ -98,6 +103,9 @@ jobs:
                   + nav_link('get-involved/', 'fa-handshake-angle', 'Get Involved', 'get-involved', active)
                   + nav_link('donation/', 'fa-heart', 'Donate', 'donation', active, 'donate-nav')
                   + '<details class="more-wrap"><summary class="more-toggle" aria-label="Open navigation drawer"><i class="fa-solid fa-bars"></i></summary><div class="more-drawer"><a href="./#about"><i class="fa-solid fa-circle-info"></i>About</a><a href="./#program"><i class="fa-solid fa-rocket"></i>Programs</a><a href="./#contact"><i class="fa-solid fa-envelope"></i>Contact</a></div></details>'
+                  + '<a href="./#about" class="mobile-extra first"><i class="fa-solid fa-circle-info"></i>About</a>'
+                  + '<a href="./#program" class="mobile-extra"><i class="fa-solid fa-rocket"></i>Programs</a>'
+                  + '<a href="./#contact" class="mobile-extra"><i class="fa-solid fa-envelope"></i>Contact</a>'
                   + '</nav><button class="hamburger" id="hamburger" aria-label="Open menu">☰</button></div></header>'
               )
 
@@ -118,8 +126,8 @@ jobs:
               text = path.read_text(encoding='utf-8')
               updated = re.sub(r'<header>.*?</header>', build_header(active_map[name]), text, count=1, flags=re.S)
               updated = re.sub(r'<footer>.*?</footer>', footer, updated, count=1, flags=re.S)
-              if '.more-wrap{position:relative' not in updated:
-                  updated = updated.replace('</style>', shell_css + '</style>', 1)
+              # Replace previous shared shell CSS if it exists; otherwise insert once.
+              updated = re.sub(r'\.more-wrap\{position:relative;display:flex;align-items:center\}.*?(?=</style>)', shell_css.strip(), updated, count=1, flags=re.S) if '.more-wrap{position:relative' in updated else updated.replace('</style>', shell_css + '</style>', 1)
               if updated != text:
                   path.write_text(updated, encoding='utf-8')
                   changed.append(name)
@@ -127,7 +135,6 @@ jobs:
           def nested_copy(source_name, route_dir):
               text = Path(source_name).read_text(encoding='utf-8')
 
-              # Assets and local scripts must resolve one directory up.
               text = text.replace('src="assets/', 'src="../assets/')
               text = text.replace("src='assets/", "src='../assets/")
               text = text.replace('href="assets/', 'href="../assets/')
@@ -136,7 +143,6 @@ jobs:
               for script in ['events-config.js', 'events-page.js', 'events.js']:
                   text = text.replace(f'src="{script}"', f'src="../{script}"')
 
-              # Root/home and section links from a nested clean route.
               text = text.replace('href="./#', 'href="../#')
               text = text.replace('href="./"', 'href="../"')
               text = text.replace('href="#home"', 'href="../#home"')
@@ -149,7 +155,6 @@ jobs:
                   text = text.replace(f'href="{route}/', f'href="../{route}/')
                   text = text.replace(f'href="{route}.html', f'href="../{route}/')
 
-              # Fix any accidental double parent prefixes.
               text = text.replace('href="../../', 'href="../')
               text = text.replace('src="../../', 'src="../')
 
@@ -177,5 +182,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html team.html events.html campaigns.html campaign-menstrual-health.html get-involved.html donation.html volunteer.html partner.html privacy-policy.html
           git add team events campaigns campaign-menstrual-health get-involved donation volunteer partner privacy-policy
-          git commit -m "Build standalone static clean routes"
+          git commit -m "Use single mobile menu across public pages"
           git push
