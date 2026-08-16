@@ -1,4 +1,4 @@
-name: Style Our Network Heading
+name: Fix Our Network Gradient
 
 on:
   push:
@@ -11,32 +11,34 @@ permissions:
   contents: write
 
 jobs:
-  style-network-heading:
+  fix-gradient:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply Youth Connect brand gradient
+      - name: Force gradient style on network heading
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          if 'id="network"' not in s:
-              raise SystemExit('Our Network section missing')
-          css='.network-head h2{background:linear-gradient(90deg,var(--green),var(--cyan),var(--blue));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}'
-          if '-webkit-text-fill-color:transparent' not in s:
+          if 'Connected for greater youth impact' not in s:
+              raise SystemExit('Network heading missing')
+          # Use a dedicated class so existing hero gradient detection cannot block this rule.
+          s=s.replace('<h2>Connected for greater youth impact</h2>','<h2 class="network-gradient-title">Connected for greater youth impact</h2>')
+          css='.network-gradient-title{display:inline-block;background:linear-gradient(90deg,#56d364 0%,#10c8ff 48%,#1268ff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent!important;color:transparent!important}'
+          if '.network-gradient-title{' not in s:
               s=s.replace('</style>',css+'</style>',1)
           p.write_text(s,encoding='utf-8')
           PY
-      - name: Commit gradient heading
+      - name: Commit fixed gradient
         shell: bash
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git commit -m "Style Our Network heading with brand gradient"
+          git commit -m "Fix Our Network heading gradient"
           git push
