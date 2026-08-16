@@ -1,4 +1,4 @@
-name: Add Our Network Section
+name: Refine Homepage Network Section
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Add compact network section
+      - name: Refine homepage flow and flags
         shell: bash
         run: |
           python3 - <<'PY'
@@ -25,24 +25,54 @@ jobs:
           import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          css='''.network-section{padding:12px 0 72px;background:#fff}.network-head{text-align:center;max-width:760px;margin:0 auto 28px}.network-head h2{font-size:clamp(30px,3vw,42px);letter-spacing:-.04em;margin-bottom:10px}.network-head p{color:var(--muted);line-height:1.7}.network-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.network-card{position:relative;padding:24px;border-radius:22px;background:#fff;border:1px solid rgba(10,26,52,.08);box-shadow:0 14px 38px rgba(13,33,62,.07);display:flex;flex-direction:column;min-height:255px}.network-card.primary{border-color:rgba(18,104,255,.24);box-shadow:0 16px 42px rgba(18,104,255,.10)}.network-country{display:flex;align-items:center;gap:9px;color:#0654d9;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}.network-flag{font-size:25px;line-height:1}.network-card h3{font-size:20px;margin-bottom:10px}.network-card p{font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:14px}.network-reg{font-size:12px;font-weight:800;color:#233b59;margin-top:auto}.network-link{display:inline-flex;align-items:center;gap:7px;margin-top:13px;color:#0654d9;font-size:12px;font-weight:900}.network-link:hover{color:#0b7adf}@media(max-width:900px){.network-grid{grid-template-columns:1fr}.network-card{min-height:0}}'''
-          if '.network-section{' not in s:s=s.replace('</style>',css+'</style>',1)
-          section='''<section class="network-section" id="network"><div class="container"><div class="network-head"><div class="section-label">Our Network</div><h2>Connected for greater youth impact</h2><p>Our youth-led organizations in Bangladesh and Malaysia work across education, innovation and community development while operating under their respective legal registrations and governance.</p></div><div class="network-grid"><article class="network-card primary"><div class="network-country"><span class="network-flag">🇧🇩</span>Bangladesh</div><h3>Youth Connect Foundation</h3><p>A registered nonprofit organization under the Societies Registration Act XXI of 1860, RJSC, Government of Bangladesh.</p><div class="network-reg">Registration: S-14789/2026</div><a class="network-link" href="https://youthconnect.org.bd/" target="_blank" rel="noopener">youthconnect.org.bd <i class="fa-solid fa-arrow-up-right-from-square"></i></a></article><article class="network-card"><div class="network-country"><span class="network-flag">🇧🇩</span>Bangladesh</div><h3>Youth Hub</h3><p>A registered youth organization under the Department of Youth Development, Government of the People’s Republic of Bangladesh.</p><div class="network-reg">Registration: DYD/124</div><a class="network-link" href="https://www.youthhub.org.bd/" target="_blank" rel="noopener">youthhub.org.bd <i class="fa-solid fa-arrow-up-right-from-square"></i></a></article><article class="network-card"><div class="network-country"><span class="network-flag">🇲🇾</span>Malaysia</div><h3>Youth Hub Foundation Berhad</h3><p>A nonprofit organization registered as a Company Limited by Guarantee (CLBG), Malaysia.</p><div class="network-reg">Registration: 1663149-U</div><a class="network-link" href="https://www.youthhub.org.my/" target="_blank" rel="noopener">youthhub.org.my <i class="fa-solid fa-arrow-up-right-from-square"></i></a></article></div></div></section>'''
-          if 'id="network"' not in s:
-              m=re.search(r'(<section[^>]*class="[^"]*about-section[^"]*"[^>]*>.*?</section>)',s,re.S)
-              if m:s=s[:m.end()]+section+s[m.end():]
-              else:
-                  marker='<section class="section gray" id="program">'
-                  if marker in s:s=s.replace(marker,section+marker,1)
-                  else:raise SystemExit('Could not locate About/Programs insertion point')
+
+          # Replace the About CTA with two clear section shortcuts.
+          s=re.sub(r'<a[^>]+href="#program"[^>]*>\s*Learn More About Us\s*→?\s*</a>',
+                   '<div class="about-actions"><a href="#what-we-do" class="btn blue">What We Do</a><a href="#network" class="btn about-network-btn">Our Network</a></div>',s,flags=re.I)
+          s=s.replace('Learn More About Us →','What We Do')
+
+          # Make the existing What We Do section directly addressable without changing its design.
+          if 'id="what-we-do"' not in s:
+              # Prefer the section containing the visible What We Do heading.
+              pos=s.find('What We Do')
+              if pos!=-1:
+                  start=s.rfind('<section',0,pos)
+                  end=s.find('>',start)
+                  if start!=-1 and end!=-1 and ' id=' not in s[start:end]:
+                      s=s[:end]+' id="what-we-do"'+s[end:]
+
+          extra='''.about-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.about-network-btn{background:#fff;color:#0654d9;border:1px solid rgba(18,104,255,.22);box-shadow:none}.about-network-btn:hover{background:#f3f7ff}.network-section{padding:12px 0 72px;background:#fff}.network-head{text-align:center;max-width:760px;margin:0 auto 28px}.network-head h2{font-size:clamp(30px,3vw,42px);letter-spacing:-.04em;margin-bottom:10px}.network-head p{color:var(--muted);line-height:1.7}.network-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.network-card{position:relative;padding:24px;border-radius:22px;background:#fff;border:1px solid rgba(10,26,52,.08);box-shadow:0 14px 38px rgba(13,33,62,.07);display:flex;flex-direction:column;min-height:255px}.network-card.primary{border-color:rgba(18,104,255,.24);box-shadow:0 16px 42px rgba(18,104,255,.10)}.network-country{display:flex;align-items:center;gap:10px;color:#0654d9;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}.network-flag{width:30px;height:20px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(10,26,52,.12)}.network-card h3{font-size:20px;margin-bottom:10px}.network-card p{font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:14px}.network-reg{font-size:12px;font-weight:800;color:#233b59;margin-top:auto}.network-link{display:inline-flex;align-items:center;gap:7px;margin-top:13px;color:#0654d9;font-size:12px;font-weight:900}.network-link:hover{color:#0b7adf}@media(max-width:900px){.network-grid{grid-template-columns:1fr}.network-card{min-height:0}}'''
+          # Remove previous network CSS and insert refined CSS once.
+          s=re.sub(r'\.network-section\{padding:12px 0 72px.*?@media\(max-width:900px\)\{\.network-grid\{grid-template-columns:1fr\}\.network-card\{min-height:0\}\}', '', s, flags=re.S)
+          if '.about-actions{' not in s:
+              s=s.replace('</style>',extra+'</style>',1)
+
+          # Reliable image flags (emoji rendering differs by OS/browser).
+          s=s.replace('<span class="network-flag">🇧🇩</span>Bangladesh','<img class="network-flag" src="https://flagcdn.com/w40/bd.png" alt="Bangladesh flag">Bangladesh')
+          s=s.replace('<span class="network-flag">🇲🇾</span>Malaysia','<img class="network-flag" src="https://flagcdn.com/w40/my.png" alt="Malaysia flag">Malaysia')
+
+          # Ensure the visible section order is About -> What We Do -> Our Network.
+          net=re.search(r'<section class="network-section" id="network">.*?</section>',s,re.S)
+          if net:
+              network=net.group(0)
+              s=s[:net.start()]+s[net.end():]
+              # Put network immediately after the What We Do section.
+              wpos=s.find('id="what-we-do"')
+              if wpos!=-1:
+                  sec_start=s.rfind('<section',0,wpos)
+                  sec_end=s.find('</section>',wpos)
+                  if sec_start!=-1 and sec_end!=-1:
+                      sec_end+=len('</section>')
+                      s=s[:sec_end]+network+s[sec_end:]
+
           p.write_text(s,encoding='utf-8')
           PY
-      - name: Commit homepage network section
+      - name: Commit refined homepage
         shell: bash
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git commit -m "Add Our Network section to homepage"
+          git commit -m "Refine homepage section flow and network flags"
           git push
