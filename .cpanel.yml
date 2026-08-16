@@ -14,4 +14,6 @@ deployment:
     - /bin/cp events-config.js $DEPLOYPATH
     - /bin/cp events-page.js $DEPLOYPATH
     - /bin/cp events.js $DEPLOYPATH
+    - /bin/cp campaigns.html $DEPLOYPATH
+    - /bin/cp campaign-menstrual-health.html $DEPLOYPATH
     - /bin/cp .htaccess $DEPLOYPATH
