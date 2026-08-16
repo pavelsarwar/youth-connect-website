@@ -27,59 +27,25 @@ jobs:
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
 
-          css='''.about-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.about-network-btn{background:#fff;color:#0654d9;border:1px solid rgba(18,104,255,.22);box-shadow:none}.about-network-btn:hover{background:#f3f7ff}.network-section{padding:20px 0 72px;background:#fff;scroll-margin-top:110px}.network-head{text-align:center;max-width:760px;margin:0 auto 28px}.network-head h2{font-size:clamp(30px,3vw,42px);letter-spacing:-.04em;margin-bottom:10px}.network-head p{color:var(--muted);line-height:1.7}.network-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.network-card{padding:24px;border-radius:22px;background:#fff;border:1px solid rgba(10,26,52,.08);box-shadow:0 14px 38px rgba(13,33,62,.07);display:flex;flex-direction:column;min-height:255px}.network-card.primary{border-color:rgba(18,104,255,.24);box-shadow:0 16px 42px rgba(18,104,255,.10)}.network-country{display:flex;align-items:center;gap:10px;color:#0654d9;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}.network-flag{width:30px;height:20px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(10,26,52,.12)}.network-card h3{font-size:20px;margin-bottom:10px}.network-card p{font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:14px}.network-reg{font-size:12px;font-weight:800;color:#233b59;margin-top:auto}.network-link{display:inline-flex;align-items:center;gap:7px;margin-top:13px;color:#0654d9;font-size:12px;font-weight:900}@media(max-width:900px){.network-grid{grid-template-columns:1fr}.network-card{min-height:0}}'''
+          # Standard section spacing: match the main site rhythm.
+          s=re.sub(r'\.network-section\{padding:[^;]+;background:#fff', '.network-section{padding:78px 0;background:#fff', s, count=1)
+          if '@media(max-width:680px){.network-section' not in s:
+              s=s.replace('</style>','@media(max-width:680px){.network-section{padding:52px 0}}</style>',1)
 
-          if '.network-section{' not in s:
-              s=s.replace('</style>', css+'</style>', 1)
-
-          # Ensure About buttons exist and point to working anchors.
+          # Preserve anchors and section content if already present.
+          if 'id="network"' not in s:
+              raise SystemExit('Our Network section missing')
           if 'href="#network"' not in s:
-              s=s.replace('>Learn More About Us →</a>', '>What We Do</a><a href="#network" class="btn about-network-btn">Our Network</a>', 1)
-          s=s.replace('href="#program">What We Do', 'href="#what-we-do">What We Do')
-
-          # Give What We Do a stable anchor if missing.
-          if 'id="what-we-do"' not in s:
-              marker='<section class="section gray" id="program">'
-              if marker in s:
-                  s=s.replace(marker,'<section class="section gray" id="what-we-do">',1)
-              else:
-                  # Fallback: tag the first section containing What We Do.
-                  m=re.search(r'<section([^>]*)>(?:(?!</section>).)*What We Do(?:(?!</section>).)*</section>',s,re.S)
-                  if m:
-                      sec=m.group(0)
-                      sec=sec.replace('<section','<section id="what-we-do"',1)
-                      s=s[:m.start()]+sec+s[m.end():]
-
-          # Remove any broken/duplicate network section, then add a fresh one.
-          s=re.sub(r'<section[^>]*id="network"[^>]*>.*?</section>','',s,flags=re.S)
-          network='''<section class="network-section" id="network"><div class="container"><div class="network-head"><div class="section-label">Our Network</div><h2>Connected for greater youth impact</h2><p>Our youth-led organizations in Bangladesh and Malaysia work across education, innovation and community development while operating under their respective legal registrations and governance.</p></div><div class="network-grid"><article class="network-card primary"><div class="network-country"><img class="network-flag" src="https://flagcdn.com/w40/bd.png" alt="Bangladesh flag">Bangladesh</div><h3>Youth Connect Foundation</h3><p>A registered nonprofit organization under the Societies Registration Act XXI of 1860, RJSC, Government of Bangladesh.</p><div class="network-reg">Registration: S-14789/2026</div><a class="network-link" href="https://youthconnect.org.bd/" target="_blank" rel="noopener">youthconnect.org.bd <i class="fa-solid fa-arrow-up-right-from-square"></i></a></article><article class="network-card"><div class="network-country"><img class="network-flag" src="https://flagcdn.com/w40/bd.png" alt="Bangladesh flag">Bangladesh</div><h3>Youth Hub</h3><p>A registered youth organization under the Department of Youth Development, Government of the People’s Republic of Bangladesh.</p><div class="network-reg">Registration: DYD/124</div><a class="network-link" href="https://www.youthhub.org.bd/" target="_blank" rel="noopener">youthhub.org.bd <i class="fa-solid fa-arrow-up-right-from-square"></i></a></article><article class="network-card"><div class="network-country"><img class="network-flag" src="https://flagcdn.com/w40/my.png" alt="Malaysia flag">Malaysia</div><h3>Youth Hub Foundation Berhad</h3><p>A nonprofit organization registered as a Company Limited by Guarantee (CLBG), Malaysia.</p><div class="network-reg">Registration: 1663149-U</div><a class="network-link" href="https://www.youthhub.org.my/" target="_blank" rel="noopener">youthhub.org.my <i class="fa-solid fa-arrow-up-right-from-square"></i></a></article></div></div></section>'''
-
-          # Place it immediately after What We Do, otherwise before Programs/Join/Contact as fallback.
-          wpos=s.find('id="what-we-do"')
-          inserted=False
-          if wpos!=-1:
-              end=s.find('</section>',wpos)
-              if end!=-1:
-                  end+=len('</section>')
-                  s=s[:end]+network+s[end:]
-                  inserted=True
-          if not inserted:
-              for marker in ['<section class="section gray" id="program">','<section class="section" id="program">','<section class="section" id="join">','<section class="section gray" id="contact">']:
-                  if marker in s:
-                      s=s.replace(marker,network+marker,1)
-                      inserted=True
-                      break
-          if not inserted:
-              s=s.replace('</main>',network+'</main>',1)
+              raise SystemExit('Our Network button missing')
 
           p.write_text(s,encoding='utf-8')
           PY
-      - name: Commit restored network section
+      - name: Commit standardized spacing
         shell: bash
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git commit -m "Restore Our Network section and homepage anchors"
+          git commit -m "Standardize Our Network section spacing"
           git push
