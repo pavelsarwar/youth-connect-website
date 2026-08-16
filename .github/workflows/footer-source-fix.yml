@@ -1,4 +1,4 @@
-name: Footer Source Fix
+name: Sync Public Site Shell
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  fix-footer:
+  sync-shell:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -19,37 +19,103 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Keep only Privacy Policy in public page footers
+      - name: Sync header footer and drawer across public HTML files
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           files = [
               'index.html',
               'team.html',
               'events.html',
-              'donation.html',
+              'campaigns.html',
+              'campaign-menstrual-health.html',
               'get-involved.html',
-              'partner.html',
+              'donation.html',
               'volunteer.html',
+              'partner.html',
               'privacy-policy.html',
           ]
-          old = '<div class="footer-right"><a href="get-involved.html">Get Involved</a> &nbsp;•&nbsp; <a href="donation.html">Donate</a> &nbsp;•&nbsp; <a href="privacy-policy.html">Privacy Policy</a></div>'
-          new = '<div class="footer-right"><a href="privacy-policy.html">Privacy Policy</a></div>'
+
+          active_map = {
+              'index.html': 'home',
+              'team.html': 'team',
+              'events.html': 'events',
+              'campaigns.html': 'campaigns',
+              'campaign-menstrual-health.html': 'campaigns',
+              'get-involved.html': 'get-involved',
+              'donation.html': 'donation',
+              'volunteer.html': 'get-involved',
+              'partner.html': 'get-involved',
+              'privacy-policy.html': '',
+          }
+
+          shell_css = '''
+          .more-wrap{position:relative;display:flex;align-items:center}
+          .more-toggle{list-style:none;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;padding:0;border:1px solid #dbe5f0;border-radius:14px;background:#fff;color:#123a5c;cursor:pointer;transition:.22s;box-shadow:0 5px 16px rgba(0,0,0,.08)}
+          .more-toggle::-webkit-details-marker{display:none}
+          .more-toggle:hover,.more-wrap[open] .more-toggle{background:#f7fbff;border-color:#b9d3ff;transform:translateY(-1px)}
+          .more-toggle i{color:#123a5c!important;font-size:19px!important}
+          .more-drawer{position:absolute;top:50px;right:0;min-width:210px;padding:9px;border-radius:16px;background:rgba(14,13,56,.99);border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 55px rgba(0,0,0,.32);z-index:150;display:grid;gap:6px}
+          .more-drawer a{display:flex!important;align-items:center;gap:10px;min-height:42px!important;padding:10px 12px!important;border-radius:11px!important;color:#fff!important;font-size:12px!important;font-weight:800!important;background:rgba(255,255,255,.05)!important;border:1px solid transparent!important}
+          .more-drawer a:hover{background:rgba(18,104,255,.18)!important;border-color:rgba(16,200,255,.25)!important;transform:none!important}
+          .more-drawer a i{width:18px;text-align:center;color:#ffc83d!important}
+          @media(max-width:1140px){.more-wrap{display:block;width:100%}.more-toggle{width:48px;height:48px;margin-left:auto}.more-drawer{position:static;min-width:0;margin-top:6px;box-shadow:none;background:rgba(255,255,255,.035)}.more-drawer a{min-height:44px!important}}
+          '''
+
+          def nav_link(href, icon, label, key, active, extra=''):
+              cls = []
+              if key == active:
+                  cls.append('active')
+              if extra:
+                  cls.append(extra)
+              attr = f' class="{" ".join(cls)}"' if cls else ''
+              return f'<a href="{href}"{attr}><i class="fa-solid {icon}"></i>{label}</a>'
+
+          def build_header(active):
+              return (
+                  '<header><div class="container nav">'
+                  '<a href="./" class="brand"><img src="assets/YCF.png" alt="Youth Connect Foundation Logo"><div><div class="brand-title">YOUTH CONNECT</div><div class="brand-subtitle">FOUNDATION</div></div></a>'
+                  '<nav class="menu" id="menu">'
+                  + nav_link('./', 'fa-house', 'Home', 'home', active)
+                  + nav_link('team/', 'fa-users', 'Team', 'team', active)
+                  + nav_link('events/', 'fa-calendar-days', 'Event', 'events', active)
+                  + nav_link('campaigns/', 'fa-bullhorn', 'Campaigns', 'campaigns', active)
+                  + nav_link('get-involved/', 'fa-handshake-angle', 'Get Involved', 'get-involved', active)
+                  + nav_link('donation/', 'fa-heart', 'Donate', 'donation', active, 'donate-nav')
+                  + '<details class="more-wrap"><summary class="more-toggle" aria-label="Open navigation drawer"><i class="fa-solid fa-bars"></i></summary><div class="more-drawer"><a href="./#about"><i class="fa-solid fa-circle-info"></i>About</a><a href="./#program"><i class="fa-solid fa-rocket"></i>Programs</a><a href="./#contact"><i class="fa-solid fa-envelope"></i>Contact</a></div></details>'
+                  + '</nav><button class="hamburger" id="hamburger" aria-label="Open menu">☰</button></div></header>'
+              )
+
+          footer = (
+              '<footer><div class="container footer-grid">'
+              '<a href="./" class="brand"><img src="assets/YCF.png" alt="Youth Connect Foundation Logo"><div><div class="brand-title">YOUTH CONNECT FOUNDATION</div><div class="brand-subtitle">© 2026 Youth Connect Foundation. All Rights Reserved.</div></div></a>'
+              '<div class="social"><a href="https://www.facebook.com/YouthConnectFdn" target="_blank" rel="noopener"><i class="fa-brands fa-facebook-f"></i></a><a href="https://www.linkedin.com/company/youthconnectfdn" target="_blank" rel="noopener"><i class="fa-brands fa-linkedin-in"></i></a><a href="https://www.instagram.com/youthconnectfdn" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i></a><a href="https://x.com/YouthConnectFdn" target="_blank" rel="noopener"><i class="fa-brands fa-x-twitter"></i></a></div>'
+              '<div class="listed-badge"><span>Listed on</span><img src="assets/google-for-non-profits.webp" alt="Google for Nonprofits"></div>'
+              '<div class="footer-legal"><div>Registered Nonprofit Organization under the Societies Registration Act XXI of 1860, RJSC, Government of Bangladesh. | Registration No: S-14789/2026</div><div class="footer-right"><a href="privacy-policy/">Privacy Policy</a></div></div>'
+              '</div></footer>'
+          )
 
           changed = []
           for name in files:
               path = Path(name)
+              if not path.exists():
+                  continue
               text = path.read_text(encoding='utf-8')
-              updated = text.replace(old, new)
+              updated = re.sub(r'<header>.*?</header>', build_header(active_map[name]), text, count=1, flags=re.S)
+              updated = re.sub(r'<footer>.*?</footer>', footer, updated, count=1, flags=re.S)
+              if '.more-wrap{position:relative' not in updated:
+                  updated = updated.replace('</style>', shell_css + '</style>', 1)
               if updated != text:
                   path.write_text(updated, encoding='utf-8')
                   changed.append(name)
+
           print('Changed:', ', '.join(changed) if changed else 'none')
           PY
 
-      - name: Commit source footer cleanup
+      - name: Commit synchronized public shell
         shell: bash
         run: |
           if git diff --quiet; then
@@ -58,6 +124,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html team.html events.html donation.html get-involved.html partner.html volunteer.html privacy-policy.html
-          git commit -m "Clean footer links across public pages"
+          git add index.html team.html events.html campaigns.html campaign-menstrual-health.html get-involved.html donation.html volunteer.html partner.html privacy-policy.html
+          git commit -m "Sync header drawer and footer across public pages"
           git push
