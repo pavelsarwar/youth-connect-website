@@ -1,0 +1,62 @@
+name: Refine Initiatives Preview
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/refine-initiatives-preview.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refine preview layout and SDG alignment
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('initiatives-preview.html')
+          s=p.read_text()
+          css='''.explore-head{text-align:center;margin-left:auto;margin-right:auto}.explore-head p{margin-left:auto;margin-right:auto}.category-tabs.explore-tabs{justify-content:center}.gradient-heading{display:inline-block;background:linear-gradient(90deg,#56d364 0%,#10c8ff 45%,#1268ff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}.sdg-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}.sdg-badge{display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:26px;padding:0 8px;border-radius:7px;color:#fff;font-size:10px;font-weight:900;letter-spacing:.02em;box-shadow:0 4px 10px rgba(13,33,62,.10)}.sdg-3{background:#4c9f38}.sdg-4{background:#c5192d}.sdg-5{background:#ff3a21}.sdg-8{background:#a21942}.sdg-9{background:#fd6925}.sdg-13{background:#3f7e44}.sdg-17{background:#19486a}'''
+          s=s.replace('</style>',css+'</style>',1)
+          s=s.replace('<div class="section-head"><div class="section-label">Explore by Focus</div><h2>Clear, practical and impact-driven</h2>', '<div class="section-head explore-head"><div class="section-label">Explore by Focus</div><h2 class="gradient-heading">Clear, practical and impact-driven</h2>',1)
+          s=s.replace('<div class="category-tabs">','<div class="category-tabs explore-tabs">',1)
+          # Gradient only major thematic section headings, not card titles.
+          for h in ['Building strong foundations for the future','Turning technology into learning and action','Helping young people see what is possible','Creating more inclusive pathways for girls','Connecting wellbeing with a sustainable future']:
+              s=s.replace(f'<h2>{h}</h2>',f'<h2 class="gradient-heading">{h}</h2>')
+          mapping={
+            'School Coders':[(4,'4'),(9,'9')],
+            'Ensuring Quality Education':[(4,'4')],
+            'Teachers Training':[(4,'4')],
+            'Promoting Youth Skills':[(4,'4'),(8,'8')],
+            'Schoolpreneur':[(4,'4'),(8,'8')],
+            'Programming Workshop':[(4,'4'),(9,'9')],
+            'School Holiday Program':[(4,'4'),(9,'9')],
+            'VR for Education & SDGs':[(4,'4'),(17,'17')],
+            'AI for Education':[(4,'4'),(9,'9')],
+            'Career Talk':[(4,'4'),(8,'8')],
+            'Open House Day':[(4,'4'),(8,'8')],
+            'Round Table Discussion':[(8,'8'),(17,'17')],
+            'Girls In ICT & STEM':[(4,'4'),(5,'5'),(9,'9')],
+            'Girls Innovation Boot Camp':[(5,'5'),(8,'8'),(9,'9')],
+            'Cyber Security Awareness for Girls':[(4,'4'),(5,'5'),(9,'9')],
+            'Climate Adaptation Initiative':[(13,'13')],
+            'Sanitary Napkins at the Door Steps':[(3,'3'),(5,'5')]
+          }
+          for title, goals in mapping.items():
+              pat=r'(<article class="initiative-card">(?:(?!</article>).)*?<h3>'+re.escape(title)+r'</h3>(?:(?!</article>).)*?)(</article>)'
+              m=re.search(pat,s,re.S)
+              if m and 'sdg-row' not in m.group(1):
+                  badges='<div class="sdg-row">'+''.join(f'<span class="sdg-badge sdg-{n}" title="Sustainable Development Goal {n}">SDG {label}</span>' for n,label in goals)+'</div>'
+                  s=s[:m.start(2)]+badges+s[m.start(2):]
+          p.write_text(s)
+          PY
+      - name: Commit preview refinement
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add initiatives-preview.html
+          git commit -m "Refine initiatives preview with SDG alignment"
+          git push
