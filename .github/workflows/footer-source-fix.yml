@@ -19,7 +19,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Sync header footer and drawer across public HTML files
+      - name: Sync shared shell and generate standalone clean routes
         shell: bash
         run: |
           python3 - <<'PY'
@@ -50,6 +50,18 @@ jobs:
               'volunteer.html': 'get-involved',
               'partner.html': 'get-involved',
               'privacy-policy.html': '',
+          }
+
+          route_map = {
+              'team.html': 'team',
+              'events.html': 'events',
+              'campaigns.html': 'campaigns',
+              'campaign-menstrual-health.html': 'campaign-menstrual-health',
+              'get-involved.html': 'get-involved',
+              'donation.html': 'donation',
+              'volunteer.html': 'volunteer',
+              'partner.html': 'partner',
+              'privacy-policy.html': 'privacy-policy',
           }
 
           shell_css = '''
@@ -112,10 +124,49 @@ jobs:
                   path.write_text(updated, encoding='utf-8')
                   changed.append(name)
 
+          def nested_copy(source_name, route_dir):
+              text = Path(source_name).read_text(encoding='utf-8')
+
+              # Assets and local scripts must resolve one directory up.
+              text = text.replace('src="assets/', 'src="../assets/')
+              text = text.replace("src='assets/", "src='../assets/")
+              text = text.replace('href="assets/', 'href="../assets/')
+              text = text.replace("url('./assets/", "url('../assets/")
+              text = text.replace('url("./assets/', 'url("../assets/')
+              for script in ['events-config.js', 'events-page.js', 'events.js']:
+                  text = text.replace(f'src="{script}"', f'src="../{script}"')
+
+              # Root/home and section links from a nested clean route.
+              text = text.replace('href="./#', 'href="../#')
+              text = text.replace('href="./"', 'href="../"')
+              text = text.replace('href="#home"', 'href="../#home"')
+
+              clean_routes = [
+                  'team', 'events', 'campaigns', 'campaign-menstrual-health',
+                  'get-involved', 'donation', 'volunteer', 'partner', 'privacy-policy'
+              ]
+              for route in clean_routes:
+                  text = text.replace(f'href="{route}/', f'href="../{route}/')
+                  text = text.replace(f'href="{route}.html', f'href="../{route}/')
+
+              # Fix any accidental double parent prefixes.
+              text = text.replace('href="../../', 'href="../')
+              text = text.replace('src="../../', 'src="../')
+
+              target = Path(route_dir) / 'index.html'
+              target.parent.mkdir(parents=True, exist_ok=True)
+              old = target.read_text(encoding='utf-8') if target.exists() else None
+              if old != text:
+                  target.write_text(text, encoding='utf-8')
+                  changed.append(str(target))
+
+          for source_name, route_dir in route_map.items():
+              nested_copy(source_name, route_dir)
+
           print('Changed:', ', '.join(changed) if changed else 'none')
           PY
 
-      - name: Commit synchronized public shell
+      - name: Commit synchronized public shell and static clean routes
         shell: bash
         run: |
           if git diff --quiet; then
@@ -125,5 +176,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html team.html events.html campaigns.html campaign-menstrual-health.html get-involved.html donation.html volunteer.html partner.html privacy-policy.html
-          git commit -m "Sync header drawer and footer across public pages"
+          git add team events campaigns campaign-menstrual-health get-involved donation volunteer partner privacy-policy
+          git commit -m "Build standalone static clean routes"
           git push
