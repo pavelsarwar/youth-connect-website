@@ -3,15 +3,87 @@
   const upcomingGrid = document.getElementById('upcomingEvents');
   const pastGrid = document.getElementById('pastEvents');
   if (!upcomingGrid || !pastGrid || !config.sheetUrl) return;
-  const escapeHtml=(v='')=>String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
-  const normalizeHeader=(v='')=>String(v).trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
-  const parseCSV=text=>{const rows=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const ch=text[i],next=text[i+1];if(ch==='"'&&quoted&&next==='"'){cell+='"';i++;}else if(ch==='"')quoted=!quoted;else if(ch===','&&!quoted){row.push(cell);cell='';}else if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&next==='\n')i++;row.push(cell);cell='';if(row.some(v=>String(v).trim()!==''))rows.push(row);row=[];}else cell+=ch;}row.push(cell);if(row.some(v=>String(v).trim()!==''))rows.push(row);if(!rows.length)return[];const headers=rows.shift().map(normalizeHeader);return rows.map(values=>Object.fromEntries(headers.map((h,i)=>[h,(values[i]||'').trim()])))};
-  const toCsvUrl=url=>{const m=String(url).match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);if(!m)return url;const g=String(url).match(/[?&#]gid=([0-9]+)/);return `https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${g?g[1]:'0'}`};
+
+  const escapeHtml = (v='') => String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+  const normalizeHeader = (v='') => String(v).trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+
+  const parseCSV = text => {
+    const rows=[]; let row=[],cell='',quoted=false;
+    for(let i=0;i<text.length;i++){
+      const ch=text[i],next=text[i+1];
+      if(ch==='"'&&quoted&&next==='"'){cell+='"';i++;}
+      else if(ch==='"') quoted=!quoted;
+      else if(ch===','&&!quoted){row.push(cell);cell='';}
+      else if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&next==='\n')i++;row.push(cell);cell='';if(row.some(v=>String(v).trim()!==''))rows.push(row);row=[];}
+      else cell+=ch;
+    }
+    row.push(cell); if(row.some(v=>String(v).trim()!=='')) rows.push(row);
+    if(!rows.length) return [];
+    const headers=rows.shift().map(normalizeHeader);
+    return rows.map(values=>Object.fromEntries(headers.map((h,i)=>[h,(values[i]||'').trim()])));
+  };
+
+  const toCsvUrl = url => {
+    const m=String(url).match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/); if(!m)return url;
+    const g=String(url).match(/[?&#]gid=([0-9]+)/);
+    return `https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${g?g[1]:'0'}`;
+  };
+
   const pick=(row,names)=>{for(const n of names)if(row[n])return row[n];return''};
-  const parseDate=(dateValue,timeValue='')=>{if(!dateValue)return null;const date=String(dateValue).trim(),time=String(timeValue||'').trim();let d=new Date(`${date}${time?' '+time:''}`);if(!Number.isNaN(d.getTime()))return d;const p=date.split(/[\/-]/).map(v=>v.trim());if(p.length===3){const[a,b,c]=p,iso=c.length===4?`${c}-${b.padStart(2,'0')}-${a.padStart(2,'0')}`:`${a}-${b.padStart(2,'0')}-${c.padStart(2,'0')}`;d=new Date(`${iso}${time?' '+time:''}`);if(!Number.isNaN(d.getTime()))return d}return null};
-  const normalizeEvent=row=>{const date=pick(row,['date','event_date','start_date','startdate']),time=pick(row,['time','event_time','start_time','starttime']),start=parseDate(date,time),endDate=pick(row,['end_date','enddate']),endTime=pick(row,['end_time','endtime']);let end=parseDate(endDate||date,endTime);if(!end&&start){end=new Date(start);end.setHours(23,59,59,999)}else if(end&&!endTime)end.setHours(23,59,59,999);return{title:pick(row,['title','event_title','event_name','name'])||'Youth Connect Event',type:pick(row,['type','category','event_type'])||'Event',date,time,location:pick(row,['location','venue','place']),description:pick(row,['description','details','summary','event_description']),link:pick(row,['registration_link','registration_url','register_link','register_url','learn_more','link','url']),buttonText:pick(row,['button_text','cta','cta_text'])||'Register / Learn More',status:String(pick(row,['status','visibility'])).toLowerCase(),start,end}};
+
+  const parseDate=(dateValue,timeValue='')=>{
+    if(!dateValue) return null;
+    let date=String(dateValue).trim();
+    let time=String(timeValue||'').trim();
+    // Google Sheets exports may include a midnight time in the date column.
+    // Keep only the calendar date when a dedicated time column exists.
+    const dateTimeMatch=date.match(/^(\d{4}-\d{1,2}-\d{1,2})[ T]\d{1,2}:\d{2}(?::\d{2})?/);
+    if(dateTimeMatch && time) date=dateTimeMatch[1];
+    if(!time && dateTimeMatch) return new Date(date.replace(' ','T'));
+    let d=new Date(`${date}${time?' '+time:''}`);
+    if(!Number.isNaN(d.getTime())) return d;
+    const p=date.split(/[\/-]/).map(v=>v.trim());
+    if(p.length===3){
+      const[a,b,c]=p,iso=c.length===4?`${c}-${b.padStart(2,'0')}-${a.padStart(2,'0')}`:`${a}-${b.padStart(2,'0')}-${c.padStart(2,'0')}`;
+      d=new Date(`${iso}${time?' '+time:''}`);
+      if(!Number.isNaN(d.getTime())) return d;
+    }
+    return null;
+  };
+
+  const normalizeEvent=row=>{
+    const date=pick(row,['date','event_date','start_date','startdate']);
+    const time=pick(row,['time','event_time','start_time','starttime']);
+    const start=parseDate(date,time);
+    const endDate=pick(row,['end_date','enddate']);
+    const endTime=pick(row,['end_time','endtime']);
+    let end=parseDate(endDate||date,endTime);
+    if(!end&&start){end=new Date(start);end.setHours(23,59,59,999)}
+    else if(end&&!endTime) end.setHours(23,59,59,999);
+    return {
+      title:pick(row,['title','event_title','event_name','name'])||'Youth Connect Event',
+      type:pick(row,['type','category','event_type'])||'Event',date,time,
+      location:pick(row,['location','venue','place']),
+      description:pick(row,['description','details','summary','event_description']),
+      link:pick(row,['registration_link','registration_url','register_link','register_url','learn_more','link','url']),
+      buttonText:pick(row,['button_text','cta','cta_text'])||'Register / Learn More',
+      status:String(pick(row,['status','visibility'])).toLowerCase(),start,end
+    };
+  };
+
   const formatDate=d=>d?`${new Intl.DateTimeFormat('en',{day:'2-digit',month:'short',year:'numeric'}).format(d)} (${new Intl.DateTimeFormat('en',{weekday:'long'}).format(d)})`:'';
   const renderCard=e=>{const dateText=formatDate(e.start)||e.date||'Date TBA';return `<article class="event-card"><div class="event-body"><div class="event-type">${escapeHtml(e.type)}</div><h3>${escapeHtml(e.title)}</h3><div class="event-meta"><span><i class="fa-regular fa-calendar"></i>${escapeHtml(dateText)}</span>${e.time?`<span><i class="fa-regular fa-clock"></i>${escapeHtml(e.time)}</span>`:''}${e.location?`<span><i class="fa-solid fa-location-dot"></i>${escapeHtml(e.location)}</span>`:''}</div>${e.description?`<div class="event-description">${escapeHtml(e.description)}</div>`:''}</div>${e.link?`<div class="event-action"><a class="event-link" href="${escapeHtml(e.link)}" target="_blank" rel="noopener noreferrer"><span>${escapeHtml(e.buttonText)}</span><i class="fa-solid fa-arrow-right"></i></a></div>`:''}</article>`};
   const renderEmpty=(grid,msg)=>grid.innerHTML=`<div class="empty"><i class="fa-regular fa-calendar"></i><br>${escapeHtml(msg)}</div>`;
-  fetch(toCsvUrl(config.sheetUrl),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(`Unable to load events (${r.status})`);return r.text()}).then(text=>{const now=new Date(),events=parseCSV(text).map(normalizeEvent).filter(e=>!['hidden','draft','inactive','disabled'].includes(e.status)),upcoming=events.filter(e=>!e.end||e.end>=now).sort((a,b)=>(a.start?.getTime()||Number.MAX_SAFE_INTEGER)-(b.start?.getTime()||Number.MAX_SAFE_INTEGER)),past=events.filter(e=>e.end&&e.end<now).sort((a,b)=>(b.start?.getTime()||0)-(a.start?.getTime()||0));upcoming.length?upcomingGrid.innerHTML=upcoming.map(renderCard).join(''):renderEmpty(upcomingGrid,'No upcoming events at the moment. Please check back soon.');past.length?pastGrid.innerHTML=past.map(renderCard).join(''):renderEmpty(pastGrid,'Past events will appear here automatically after their event date has passed.')}).catch(error=>{console.warn('Youth Connect events page:',error.message);renderEmpty(upcomingGrid,'Events are temporarily unavailable. Please check back shortly.');renderEmpty(pastGrid,'Past events are temporarily unavailable.')});
+
+  fetch(toCsvUrl(config.sheetUrl),{cache:'no-store'})
+    .then(r=>{if(!r.ok)throw new Error(`Unable to load events (${r.status})`);return r.text()})
+    .then(text=>{
+      const now=new Date();
+      const events=parseCSV(text).map(normalizeEvent).filter(e=>!['hidden','draft','inactive','disabled'].includes(e.status));
+      const upcoming=events.filter(e=>!e.end||e.end>=now).sort((a,b)=>(a.start?.getTime()||Number.MAX_SAFE_INTEGER)-(b.start?.getTime()||Number.MAX_SAFE_INTEGER));
+      const past=events.filter(e=>e.end&&e.end<now).sort((a,b)=>(b.start?.getTime()||0)-(a.start?.getTime()||0));
+      upcoming.length?upcomingGrid.innerHTML=upcoming.map(renderCard).join(''):renderEmpty(upcomingGrid,'No upcoming events at the moment. Please check back soon.');
+      past.length?pastGrid.innerHTML=past.map(renderCard).join(''):renderEmpty(pastGrid,'Past events will appear here automatically after their event date has passed.');
+    })
+    .catch(error=>{console.warn('Youth Connect events page:',error.message);renderEmpty(upcomingGrid,'Events are temporarily unavailable. Please check back shortly.');renderEmpty(pastGrid,'Past events are temporarily unavailable.');});
 })();
