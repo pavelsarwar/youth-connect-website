@@ -16,4 +16,14 @@ deployment:
     - /bin/cp events.js $DEPLOYPATH
     - /bin/cp campaigns.html $DEPLOYPATH
     - /bin/cp campaign-menstrual-health.html $DEPLOYPATH
+    - /bin/cp clean-page.js $DEPLOYPATH
+    - /bin/cp -R team $DEPLOYPATH
+    - /bin/cp -R events $DEPLOYPATH
+    - /bin/cp -R campaigns $DEPLOYPATH
+    - /bin/cp -R campaign-menstrual-health $DEPLOYPATH
+    - /bin/cp -R get-involved $DEPLOYPATH
+    - /bin/cp -R donation $DEPLOYPATH
+    - /bin/cp -R volunteer $DEPLOYPATH
+    - /bin/cp -R partner $DEPLOYPATH
+    - /bin/cp -R privacy-policy $DEPLOYPATH
     - /bin/cp .htaccess $DEPLOYPATH
