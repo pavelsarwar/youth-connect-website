@@ -1,0 +1,160 @@
+name: Promote Initiatives Sitewide
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/promote-initiatives.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build initiatives page and sync clean navigation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          preview = Path('initiatives-preview.html')
+          s = preview.read_text(encoding='utf-8')
+
+          # Promote preview to production page while preserving the approved design.
+          s = s.replace('<title>Initiatives Preview | Youth Connect Foundation</title>', '<title>Initiatives | Youth Connect Foundation</title>')
+          s = re.sub(r'<div class="preview-note">.*?</div>', '', s, count=1, flags=re.S)
+          s = s.replace('Preview only — not linked to the live website navigation', '')
+
+          # Force all approved major thematic headings to use the gradient style.
+          headings = [
+              'Clear, practical and impact-driven',
+              'Building strong foundations for the future',
+              'Turning technology into learning and action',
+              'Helping young people see what is possible',
+              'Opening pathways for girls in technology',
+              'Community impact beyond the classroom',
+              'Creating more inclusive pathways for girls',
+              'Connecting wellbeing with a sustainable future'
+          ]
+          for h in headings:
+              s = s.replace(f'<h2>{h}</h2>', f'<h2 class="gradient-heading">{h}</h2>')
+              s = s.replace(f'<h2 class="gradient-heading">{h}</h2>', f'<h2 class="gradient-heading">{h}</h2>')
+
+          # Ensure a robust gradient rule exists and wins over generic heading color rules.
+          strong_gradient = '.gradient-heading{display:inline-block!important;background:linear-gradient(90deg,#56d364 0%,#10c8ff 45%,#1268ff 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important;color:transparent!important}'
+          if strong_gradient not in s:
+              s = s.replace('</style>', strong_gradient + '</style>', 1)
+
+          # Remove preview-only wording if any remains.
+          s = s.replace('Preview only', '')
+
+          # Standard root navigation links, with Initiatives as a main menu item.
+          def root_nav(html, active=False):
+              # Normalize common internal links to extensionless routes.
+              repl = {
+                  'href="index.html"':'href="./"',
+                  'href="team.html"':'href="team/"',
+                  'href="events.html"':'href="events/"',
+                  'href="campaigns.html"':'href="campaigns/"',
+                  'href="campaign-menstrual-health.html"':'href="campaign-menstrual-health/"',
+                  'href="get-involved.html"':'href="get-involved/"',
+                  'href="donation.html"':'href="donation/"',
+                  'href="volunteer.html"':'href="volunteer/"',
+                  'href="partner.html"':'href="partner/"',
+                  'href="privacy-policy.html"':'href="privacy-policy/"',
+                  'href="initiatives.html"':'href="initiatives/"'
+              }
+              for a,b in repl.items(): html=html.replace(a,b)
+              # Handle query variants.
+              html=html.replace('href="get-involved.html?', 'href="get-involved/?')
+              # Add Initiatives after Campaigns, otherwise after Event.
+              if '>Initiatives</a>' not in html:
+                  item='<a href="initiatives/"'+(' class="active"' if active else '')+'><i class="fa-solid fa-lightbulb"></i>Initiatives</a>'
+                  m=re.search(r'(<a[^>]+href="campaigns/"[^>]*>.*?</a>)', html, re.S)
+                  if m:
+                      html=html[:m.end()]+item+html[m.end():]
+                  else:
+                      m=re.search(r'(<a[^>]+href="events/"[^>]*>.*?</a>)', html, re.S)
+                      if m: html=html[:m.end()]+item+html[m.end():]
+              if active:
+                  html=re.sub(r'<a href="initiatives/"(?! class="active")', '<a href="initiatives/" class="active"', html, count=1)
+              return html
+
+          s = root_nav(s, active=True)
+          Path('initiatives.html').write_text(s, encoding='utf-8')
+
+          # Build standalone clean-route page for /initiatives/.
+          clean=s
+          clean=clean.replace('src="assets/', 'src="../assets/').replace('href="assets/', 'href="../assets/').replace("url('./assets/", "url('../assets/")
+          clean=clean.replace('href="./"', 'href="../"')
+          for route in ['team','events','campaigns','campaign-menstrual-health','initiatives','get-involved','donation','volunteer','partner','privacy-policy']:
+              clean=clean.replace(f'href="{route}/', f'href="../{route}/')
+          clean=clean.replace('href="../initiatives/" class="active"', 'href="./" class="active"')
+          clean=clean.replace('href="../initiatives/"', 'href="./"')
+          Path('initiatives').mkdir(exist_ok=True)
+          Path('initiatives/index.html').write_text(clean, encoding='utf-8')
+
+          # Sync root public HTML navigation and extensionless internal URLs.
+          root_files=[p for p in Path('.').glob('*.html') if p.name not in {'initiatives-preview.html'}]
+          for p in root_files:
+              html=p.read_text(encoding='utf-8')
+              html=root_nav(html, active=(p.name=='initiatives.html'))
+              p.write_text(html, encoding='utf-8')
+
+          # Sync existing clean-route standalone pages.
+          clean_dirs=['team','events','campaigns','campaign-menstrual-health','get-involved','donation','volunteer','partner','privacy-policy']
+          for d in clean_dirs:
+              p=Path(d)/'index.html'
+              if not p.exists(): continue
+              html=p.read_text(encoding='utf-8')
+              # Normalize accidental .html links to clean sibling routes.
+              html=html.replace('href="../index.html"','href="../"').replace('href="index.html"','href="../"')
+              routes=['team','events','campaigns','campaign-menstrual-health','initiatives','get-involved','donation','volunteer','partner','privacy-policy']
+              for r in routes:
+                  html=html.replace(f'href="{r}.html"',f'href="../{r}/"')
+                  html=html.replace(f'href="../{r}.html"',f'href="../{r}/"')
+              html=html.replace('href="get-involved.html?', 'href="../get-involved/?').replace('href="../get-involved.html?', 'href="../get-involved/?')
+              if '>Initiatives</a>' not in html:
+                  item='<a href="../initiatives/"><i class="fa-solid fa-lightbulb"></i>Initiatives</a>'
+                  m=re.search(r'(<a[^>]+href="(?:../)?campaigns/"[^>]*>.*?</a>)',html,re.S)
+                  if not m: m=re.search(r'(<a[^>]+href="(?:../)?events/"[^>]*>.*?</a>)',html,re.S)
+                  if m: html=html[:m.end()]+item+html[m.end():]
+              p.write_text(html,encoding='utf-8')
+
+          # Update cPanel deployment for the new source and clean route.
+          cp=Path('.cpanel.yml')
+          c=cp.read_text(encoding='utf-8')
+          if '/bin/cp initiatives.html $DEPLOYPATH' not in c:
+              c=c.replace('    - /bin/cp campaigns.html $DEPLOYPATH\n','    - /bin/cp campaigns.html $DEPLOYPATH\n    - /bin/cp initiatives.html $DEPLOYPATH\n')
+          if '/bin/cp -R initiatives $DEPLOYPATH' not in c:
+              c=c.replace('    - /bin/cp -R campaigns $DEPLOYPATH\n','    - /bin/cp -R campaigns $DEPLOYPATH\n    - /bin/cp -R initiatives $DEPLOYPATH\n')
+          cp.write_text(c,encoding='utf-8')
+          PY
+      - name: Validate initiatives and clean URLs
+        shell: bash
+        run: |
+          test -f initiatives.html
+          test -f initiatives/index.html
+          grep -q 'Opening pathways for girls in technology' initiatives.html
+          grep -q 'Community impact beyond the classroom' initiatives.html
+          grep -q 'gradient-heading' initiatives.html
+          grep -q '>Initiatives</a>' index.html
+          grep -q 'initiatives/' index.html
+          grep -q 'initiatives.html' .cpanel.yml
+          ! grep -q 'href="initiatives.html"' index.html
+      - name: Commit sitewide initiatives integration
+        shell: bash
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add '*.html' '*/index.html' .cpanel.yml initiatives || true
+          git commit -m "Launch Initiatives page with clean sitewide navigation"
+          git push
