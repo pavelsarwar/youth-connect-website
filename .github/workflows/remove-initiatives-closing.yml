@@ -1,0 +1,45 @@
+name: Remove Initiatives Closing Section
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/remove-initiatives-closing.yml']
+permissions:
+  contents: write
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Remove closing section and sync clean route
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('initiatives.html')
+          s=p.read_text(encoding='utf-8')
+          # Remove the visitor-facing closing block beginning with the requested headline.
+          s=re.sub(r'<section[^>]*>\s*<div[^>]*>\s*<div class="closing">\s*<h2>One portfolio\. Many pathways to impact\.</h2>.*?</section>', '', s, flags=re.S)
+          s=re.sub(r'<div class="closing">\s*<h2>One portfolio\. Many pathways to impact\.</h2>.*?</div>', '', s, flags=re.S)
+          if 'One portfolio. Many pathways to impact.' in s:
+              raise SystemExit('Closing headline still present')
+          p.write_text(s,encoding='utf-8')
+          q=Path('initiatives/index.html')
+          clean=s.replace('href="assets/','href="../assets/').replace('src="assets/','src="../assets/').replace("url('./assets/","url('../assets/")
+          clean=clean.replace('href="./" class="brand"','href="../" class="brand"').replace('href="./"><i class="fa-solid fa-house"','href="../"><i class="fa-solid fa-house"')
+          for route in ['team/','events/','campaigns/','get-involved/','donation/']:
+              clean=clean.replace(f'href="{route}"',f'href="../{route}"')
+          clean=clean.replace('href="initiatives/" class="active"','href="./" class="active"')
+          q.write_text(clean,encoding='utf-8')
+          PY
+      - name: Validate
+        run: |
+          ! grep -q 'One portfolio. Many pathways to impact.' initiatives.html
+          ! grep -q 'One portfolio. Many pathways to impact.' initiatives/index.html
+      - name: Commit final version
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add initiatives.html initiatives/index.html
+          if ! git diff --cached --quiet; then git commit -m 'Remove Initiatives closing section'; git push; fi
