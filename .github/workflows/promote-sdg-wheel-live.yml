@@ -1,0 +1,41 @@
+name: Promote Rotating SDG Wheel Live
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/promote-sdg-wheel-live.yml']
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply approved SDG wheel animation to homepage
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          if 'assets/sdg-no-bg.png' not in s:
+              raise SystemExit('SDG wheel image not found in homepage')
+          css='''@keyframes ycfSdgWheelSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}\n.message-icon img[src*="sdg-no-bg"]{animation:ycfSdgWheelSpin 26s linear infinite;transform-origin:50% 50%;will-change:transform}\n.message-icon img[src*="sdg-no-bg"]:hover{animation-play-state:paused}\n@media (prefers-reduced-motion:reduce){.message-icon img[src*="sdg-no-bg"]{animation:none}}'''
+          if '@keyframes ycfSdgWheelSpin' not in s:
+              s=s.replace('</style>',css+'</style>',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validate homepage animation
+        run: |
+          grep -q '@keyframes ycfSdgWheelSpin' index.html
+          grep -q '26s linear infinite' index.html
+          grep -q 'prefers-reduced-motion' index.html
+      - name: Commit live homepage animation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'Add slow rotating SDG wheel to homepage'
+            git push
+          fi
